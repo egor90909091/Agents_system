@@ -1,0 +1,3 @@
+store_id,departure_time,arrival_time,products,distance,cost,route
+1,09:00,11:30,"{'product1': 80, 'product2': 60, 'product3': 40}",10,200,warehouse -> store_1
+2,12:00,15:45,"{'product1': 70, 'product2': 50, 'product3': 30}",15,250,warehouse -> store_2

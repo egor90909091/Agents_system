@@ -1,0 +1,16 @@
+cd G:\mas_delivery_system  
+py -3.9 -m venv venv
+.\venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "G:\mas_delivery_system"
+python scripts/run_client.py 
+
+
+--server 178.214.247.159
+IP???
+
+
+cd G:\mas_delivery_system  
+py -3.9 -m venv venv
+.\venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "G:\mas_delivery_system"
+python scripts/run_server.py
