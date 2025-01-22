@@ -1,83 +1,20 @@
 timestamp,event_type,agent_id,location,details,status
-09:00,store_status,store_1,"(5, 5)","Начальные требования: {'product1': 80, 'product2': 60, 'product3': 40}",initialized
-09:00,store_status,store_2,"(10, 3)","Начальные требования: {'product1': 70, 'product2': 50, 'product3': 30}",initialized
+09:00,store_status,Магнит,"(5, 5)","Начальные требования: {'молоко': 80, 'хлеб': 60, 'вода': 40}",initialized
+09:00,store_status,Пятерочка,"(10, 3)","Начальные требования: {'молоко': 70, 'хлеб': 50, 'вода': 30}",initialized
 09:00,vehicle_status,vehicle_1,"(0, 0)",Готов к работе. Вместимость: 200,idle
 09:00,vehicle_status,vehicle_2,"(0, 0)",Готов к работе. Вместимость: 300,idle
-09:15,low_stock,store_1,"(5, 5)",Низкий запас product1: 0/80,need_restock
-09:15,low_stock,store_1,"(5, 5)",Низкий запас product2: 0/60,need_restock
-09:15,low_stock,store_1,"(5, 5)",Низкий запас product3: 0/40,need_restock
-09:15,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-09:15,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-09:15,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-09:15,vehicle_dispatch,vehicle_1,"(0, 0)",Загружено: {'product1': 80} для магазина 1 (использовано 80/200),en_route
-09:15,vehicle_dispatch,vehicle_2,"(0, 0)",Загружено: {'product2': 60} для магазина 1 (использовано 60/300),en_route
-09:30,low_stock,store_1,"(5, 5)",Низкий запас product1: 0/80,need_restock
-09:30,low_stock,store_1,"(5, 5)",Низкий запас product2: 0/60,need_restock
-09:30,low_stock,store_1,"(5, 5)",Низкий запас product3: 0/40,need_restock
-09:30,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-09:30,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-09:30,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-09:30,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 09:30),available
-09:30,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 09:30),available
-09:30,delivery_received,store_1,"(5, 5)",Получено: product2: 60,completed
-09:30,delivery_complete,vehicle_2,"(5, 5)",Доставлено: {'product2': 60},completed
-09:45,low_stock,store_1,"(5, 5)",Низкий запас product1: 0/80,need_restock
-09:45,low_stock,store_1,"(5, 5)",Низкий запас product3: 0/40,need_restock
-09:45,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-09:45,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-09:45,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-09:45,delivery_request,store_2,"(10, 3)","Заказано: {'product1': 36, 'product2': 32, 'product3': 31}",pending
-09:45,warehouse_status,warehouse_0,"(0, 0)","Текущие запасы: {'product1': 420, 'product2': 440, 'product3': 500}",updated
-10:00,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 10:00),available
-10:00,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 10:00),available
-10:00,delivery_received,store_1,"(5, 5)",Получено: product1: 80,completed
-10:00,delivery_complete,vehicle_1,"(5, 5)",Доставлено: {'product1': 80},completed
-10:00,vehicle_return,vehicle_2,"(0, 0)",Возврат на склад,idle
-10:00,low_stock,store_1,"(5, 5)",Низкий запас product3: 0/40,need_restock
-10:00,vehicle_dispatch,vehicle_2,"(0, 0)",Загружено: {'product3': 40} для магазина 1 (использовано 40/300),en_route
-10:00,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-10:00,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-10:00,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-10:15,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 10:15),available
-10:15,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 10:15),available
-10:15,delivery_received,store_1,"(5, 5)",Получено: product3: 40,completed
-10:15,delivery_complete,vehicle_2,"(5, 5)",Доставлено: {'product3': 40},completed
-10:15,vehicle_return,vehicle_1,"(0, 0)",Возврат на склад,idle
-10:15,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-10:15,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-10:15,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-10:30,vehicle_return,vehicle_2,"(0, 0)",Возврат на склад,idle
-10:30,vehicle_dispatch,vehicle_1,"(0, 0)",Загружено: {'product1': 70} для магазина 2 (использовано 70/200),en_route
-10:30,vehicle_dispatch,vehicle_2,"(0, 0)",Загружено: {'product2': 50} для магазина 2 (использовано 50/300),en_route
-10:30,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-10:30,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-10:30,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-10:45,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-10:45,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-10:45,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-10:45,delivery_window,store_2,"(10, 3)",Нет доступного окна доставки (текущее время 10:45),unavailable
-10:45,delivery_waiting,vehicle_2,"(10, 3)",Ожидание доступного окна доставки,waiting
-10:45,delivery_request,store_2,"(10, 3)","Заказано: {'product1': 32, 'product2': 49, 'product3': 20}",pending
-10:45,warehouse_status,warehouse_0,"(0, 0)","Текущие запасы: {'product1': 350, 'product2': 390, 'product3': 460}",updated
-11:00,low_stock,store_2,"(10, 3)",Низкий запас product1: 0/70,need_restock
-11:00,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-11:00,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-11:00,delivery_window,store_2,"(10, 3)",Доступно окно доставки 11:00-15:00 (текущее время 11:00),available
-11:00,delivery_window,store_2,"(10, 3)",Доступно окно доставки 11:00-15:00 (текущее время 11:00),available
-11:00,delivery_received,store_2,"(10, 3)",Получено: product1: 70,completed
-11:00,delivery_complete,vehicle_1,"(10, 3)",Доставлено: {'product1': 70},completed
-11:15,vehicle_return,vehicle_1,"(0, 0)",Возврат на склад,idle
-11:15,low_stock,store_2,"(10, 3)",Низкий запас product2: 0/50,need_restock
-11:15,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-11:15,delivery_window,store_2,"(10, 3)",Доступно окно доставки 11:00-15:00 (текущее время 11:15),available
-11:15,delivery_window,store_2,"(10, 3)",Доступно окно доставки 11:00-15:00 (текущее время 11:15),available
-11:15,delivery_received,store_2,"(10, 3)",Получено: product2: 50,completed
-11:15,delivery_complete,vehicle_2,"(10, 3)",Доставлено: {'product2': 50},completed
-11:15,delivery_request,store_1,"(5, 5)","Заказано: {'product1': 38, 'product2': 45, 'product3': 31}",pending
-11:15,vehicle_dispatch,vehicle_1,"(0, 0)","Отправлен с заказом {'product1': 38, 'product2': 45, 'product3': 31} в магазин 1",en_route
-11:30,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-11:30,delivery_request,store_2,"(10, 3)","Заказано: {'product1': 50, 'product2': 43, 'product3': 36}",pending
-11:45,vehicle_return,vehicle_2,"(0, 0)",Возврат на склад,idle
-11:45,low_stock,store_2,"(10, 3)",Низкий запас product3: 0/30,need_restock
-11:45,delivery_request,store_2,"(10, 3)","Заказано: {'product1': 30, 'product2': 23, 'product3': 41}",pending
-11:45,vehicle_dispatch,vehicle_2,"(0, 0)","Отправлен с заказом {'product1': 30, 'product2': 23, 'product3': 41} в магазин 2",en_route
+09:15,vehicle_dispatch,Магнит,"(0, 0)",Машина 1 загружена: {'молоко': 80},en_route
+09:15,vehicle_dispatch,Магнит,"(0, 0)",Машина 2 загружена: {'хлеб': 60},en_route
+09:45,warehouse_status,Склад,"(0, 0)","Текущие запасы: {'молоко': 420, 'хлеб': 440, 'вода': 500}",updated
+10:30,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 10:30),available
+10:30,delivery_complete,Магнит,"(5, 5)",Доставлено машиной #2: {'хлеб': 60},completed
+10:30,delivery_request,Магнит,"(5, 5)","Заказано: {'молоко': 26, 'хлеб': 25, 'вода': 14}",pending
+10:30,warehouse_status,Склад,"(0, 0)","Текущие запасы: {'молоко': 420, 'хлеб': 440, 'вода': 500}",updated
+11:00,vehicle_return,vehicle_2,"(0, 0)",Возврат на склад,idle
+11:15,vehicle_dispatch,Магнит,"(0, 0)",Машина 2 загружена: {'молоко': 80},en_route
+11:30,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 11:30),available
+11:30,delivery_complete,Магнит,"(5, 5)",Доставлено машиной #2: {'молоко': 80},completed
+11:30,delivery_request,Пятерочка,"(10, 3)","Заказано: {'молоко': 27, 'хлеб': 19, 'вода': 44}",pending
+11:30,warehouse_status,Склад,"(0, 0)","Текущие запасы: {'молоко': 340, 'хлеб': 440, 'вода': 500}",updated
+11:45,delivery_window,store_1,"(5, 5)",Доступно окно доставки 9:00-12:00 (текущее время 11:45),available
+11:45,delivery_complete,Магнит,"(5, 5)",Доставлено машиной #1: {'молоко': 80},completed

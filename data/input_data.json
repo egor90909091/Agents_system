@@ -1,37 +1,39 @@
 {
-    "warehouse": {
+    "склад": {
         "inventory": {
-            "product1": 500,
-            "product2": 500,
-            "product3": 500
+            "молоко": 500,
+            "хлеб": 500,
+            "вода": 500
         },
         "location": [0, 0]
     },
     "stores": [
         {
             "id": 1,
+            "name": "Магнит",
             "location": [5, 5],
             "delivery_windows": [
                 [9, 12],
                 [14, 17]
             ],
             "product_requirements": {
-                "product1": 80,
-                "product2": 60,
-                "product3": 40
+                "молоко": 80,
+                "хлеб": 60,
+                "вода": 40
             }
         },
         {
             "id": 2,
+            "name": "Пятерочка",
             "location": [10, 3],
             "delivery_windows": [
                 [11, 15],
                 [16, 19]
             ],
             "product_requirements": {
-                "product1": 70,
-                "product2": 50,
-                "product3": 30
+                "молоко": 70,
+                "хлеб": 50,
+                "вода": 30
             }
         }
     ],
@@ -46,17 +48,17 @@
         }
     ],
     "distances": {
-        "warehouse": {
-            "store_1": 10,
-            "store_2": 15
+        "склад": {
+            "Магнит": 10,
+            "Пятерочка": 15
         },
-        "store_1": {
-            "warehouse": 10,
-            "store_2": 8
+        "Магнит": {
+            "склад": 10,
+            "Пятерочка": 8
         },
-        "store_2": {
-            "warehouse": 15,
-            "store_1": 8
+        "Пятерочка": {
+            "склад": 15,
+            "Магнит": 8
         }
     }
 }

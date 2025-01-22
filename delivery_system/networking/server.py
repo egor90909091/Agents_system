@@ -24,7 +24,21 @@ class DeliveryServer:
         print("\nПолучен сигнал завершения работы...")
         self._running = False
         
+        if self.model:
+            print("Сохранение результатов...")
+            try:
+                self.model.save_results('data/results.csv')
+                self.model.save_real_deliveries('real_deliveries')
+                self.model.save_system_log('system_log')
+                print("\nРезультаты сохранены в:")
+                print("- data/results.csv")
+                print("- data/real_deliveries.txt")
+                print("- data/system_log.txt")
+            except Exception as e:
+                print(f"Ошибка при сохранении результатов: {e}")
+        
         # Закрываем все клиентские соединения
+        print("Закрываем все соединения...")
         for client in self.clients:
             try:
                 client.close()
@@ -38,11 +52,6 @@ class DeliveryServer:
         except:
             pass
             
-        # Сохраняем результаты
-        if self.model:
-            print("Сохранение результатов...")
-            self.model.save_results('data/results.csv')
-        
         print("Сервер остановлен")
         
     def start(self):
@@ -51,7 +60,6 @@ class DeliveryServer:
             self.sock.bind((self.host, self.port))
             self.sock.listen(5)
             
-            # Выводим информацию о всех сетевых интерфейсах
             hostname = socket.gethostname()
             addresses = socket.getaddrinfo(hostname, None)
             print(f"\nСервер доступен по следующим адресам:")
@@ -86,45 +94,19 @@ class DeliveryServer:
             print(f"Критическая ошибка сервера: {e}")
             raise
         finally:
-            self.cleanup()
-    
-    def cleanup(self):
-        """Очистка ресурсов сервера"""
-        print("\nЗакрытие всех соединений...")
-        for client in self.clients:
-            try:
-                client.close()
-            except:
-                pass
-        self.clients.clear()
-        
-        try:
-            self.sock.shutdown(socket.SHUT_RDWR)
-        except:
-            pass
-        finally:
-            self.sock.close()
-        
-        print("Сервер остановлен")
-
+            self.shutdown(None, None)
+            
     def handle_client(self, client: socket.socket, address: tuple):
         """Обработка клиентских подключений"""
         try:
             while self._running:
-                try:
-                    data = client.recv(4096)
-                    if not data:
-                        break
-                        
-                    message = json.loads(data.decode())
-                    response = self.process_message(message)
-                    client.send(json.dumps(response).encode())
-                except json.JSONDecodeError:
-                    error_response = {
-                        'status': 'error',
-                        'message': 'Invalid JSON format'
-                    }
-                    client.send(json.dumps(error_response).encode())
+                data = client.recv(4096)
+                if not data:
+                    break
+                    
+                message = json.loads(data.decode())
+                response = self.process_message(message)
+                client.send(json.dumps(response).encode())
         except Exception as e:
             print(f"Ошибка при обработке клиента {address}: {e}")
         finally:
@@ -132,7 +114,8 @@ class DeliveryServer:
             if client in self.clients:
                 self.clients.remove(client)
             print(f"Клиент отключен: {address}")
-
+            
+  
     def process_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
         """Обработка сообщений от клиентов"""
         try:

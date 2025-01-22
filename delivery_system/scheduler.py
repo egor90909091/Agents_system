@@ -13,11 +13,11 @@ class DeliveryScheduler:
     def _build_graph(self):
         """Создание графа маршрутов с использованием матрицы расстояний"""
         # Добавляем склад
-        self.route_graph.add_node("warehouse", pos=self.model.warehouse.pos)
+        self.route_graph.add_node("склад", pos=self.model.warehouse.pos)
         
         # Добавляем магазины
         for store in self.model.stores:
-            self.route_graph.add_node(f"store_{store.unique_id}", 
+            self.route_graph.add_node(store.name, 
                                     pos=store.pos,
                                     windows=store.delivery_windows)
         
@@ -25,18 +25,33 @@ class DeliveryScheduler:
         distances = self.model.data['distances']
         for from_node, to_nodes in distances.items():
             for to_node, distance in to_nodes.items():
-                # Преобразуем имена узлов в формат графа
-                from_id = from_node if from_node == 'warehouse' else f"store_{from_node.split('_')[1]}"
-                to_id = to_node if to_node == 'warehouse' else f"store_{to_node.split('_')[1]}"
-                
-                self.route_graph.add_edge(from_id, to_id, weight=distance)
+                self.route_graph.add_edge(from_node, to_node, weight=distance)
     
-    def calculate_delivery_cost(self, distance: float) -> float:
+    def calculate_delivery_cost(self, distance: float, time_window: tuple, 
+                              load_weight: float) -> float:
         """Расчет стоимости доставки на основе расстояния"""
-        # Простая формула расчета стоимости: базовая ставка + стоимость за км
-        base_cost = 100  # Базовая стоимость доставки
-        per_km_cost = 10  # Стоимость за километр
-        return base_cost + (distance * per_km_cost)
+        # Базовая стоимость
+        base_cost = 100
+        
+        # Стоимость за километр
+        km_cost = distance * 10
+        
+        # Надбавка за вес груза
+        weight_factor = load_weight / 1000  # 1000 кг - базовый вес
+        weight_cost = base_cost * weight_factor
+        
+        # Надбавка за время доставки
+        start_hour = time_window[0]
+        if start_hour < 10:  # Ранняя доставка
+            time_cost = base_cost * 0.2
+        elif start_hour > 16:  # Поздняя доставка
+            time_cost = base_cost * 0.3
+        else:
+            time_cost = 0
+            
+        total_cost = base_cost + km_cost + weight_cost + time_cost
+        
+        return round(total_cost, 2)
     
     def generate_schedule(self):
         """Генерация расписания доставок"""
@@ -45,19 +60,16 @@ class DeliveryScheduler:
         
         # Для каждого магазина
         for store in self.model.stores:
-            store_node = f"store_{store.unique_id}"
-            
             # Находим кратчайший путь от склада до магазина
-            path = nx.shortest_path(self.route_graph, "warehouse", store_node, 
+            path = nx.shortest_path(self.route_graph, "склад", store.name, 
                                   weight="weight")
-            distance = nx.shortest_path_length(self.route_graph, "warehouse", 
-                                             store_node, weight="weight")
+            distance = nx.shortest_path_length(self.route_graph, "склад", 
+                                             store.name, weight="weight")
             
-            # Рассчитываем стоимость доставки
-            delivery_cost = self.calculate_delivery_cost(distance)
-            total_cost += delivery_cost
+            # Оцениваем общий вес груза
+            total_weight = sum(store.product_requirements.values())
             
-            # Оцениваем время доставки (предполагаем 15 минут на единицу расстояния)
+            # Оцениваем время доставки (15 минут на единицу расстояния)
             delivery_time = timedelta(minutes=15 * distance)
             
             # Находим подходящее окно доставки
@@ -66,14 +78,22 @@ class DeliveryScheduler:
                 window_end_time = datetime.strptime(f"{window_end}:00", "%H:%M")
                 
                 if current_time + delivery_time <= window_end_time:
+                    # Рассчитываем стоимость
+                    cost = self.calculate_delivery_cost(
+                        distance, 
+                        (window_start, window_end),
+                        total_weight
+                    )
+                    total_cost += cost
+                    
                     # Добавляем доставку в расписание
                     delivery_slot = {
-                        'store_id': store.unique_id,
+                        'store_id': store.name,  # Используем имя магазина
                         'departure_time': current_time.strftime("%H:%M"),
                         'arrival_time': (current_time + delivery_time).strftime("%H:%M"),
                         'products': store.product_requirements,
                         'distance': distance,
-                        'cost': delivery_cost,
+                        'cost': cost,
                         'route': " -> ".join(path)
                     }
                     self.schedule.append(delivery_slot)
@@ -86,8 +106,6 @@ class DeliveryScheduler:
     
     def save_schedule(self, filename: str):
         """Сохранение расписания в файл"""
-        total_cost = sum(slot['cost'] for slot in self.schedule)
-        
         # Сохраняем в CSV
         with open(f"data/{filename}.csv", 'w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=[
@@ -103,7 +121,7 @@ class DeliveryScheduler:
             f.write("=" * 50 + "\n\n")
             
             for slot in self.schedule:
-                f.write(f"Магазин #{slot['store_id']}\n")
+                f.write(f"Магазин: {slot['store_id']}\n")
                 f.write(f"Время выезда: {slot['departure_time']}\n")
                 f.write(f"Время прибытия: {slot['arrival_time']}\n")
                 f.write("Товары для доставки:\n")
@@ -114,9 +132,11 @@ class DeliveryScheduler:
                 f.write(f"Стоимость доставки: {slot['cost']} руб.\n")
                 f.write("-" * 30 + "\n\n")
                 
+            # Общая статистика
+            total_cost = sum(slot['cost'] for slot in self.schedule)
+            total_distance = sum(slot['distance'] for slot in self.schedule)
             f.write("\nОБЩАЯ СТАТИСТИКА\n")
             f.write("=" * 50 + "\n")
             f.write(f"Общая стоимость доставок: {total_cost} руб.\n")
             f.write(f"Количество рейсов: {len(self.schedule)}\n")
-            total_distance = sum(slot['distance'] for slot in self.schedule)
             f.write(f"Общее расстояние: {total_distance} км\n")

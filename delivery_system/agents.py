@@ -90,32 +90,17 @@ class StoreAgent(Agent):
                 )
     
     def receive_delivery(self, products):
-        """Прием доставки с учетом временных окон"""
-        if self.can_accept_delivery():
-            # Принимаем доставку
-            for product, amount in products.items():
-                self.inventory[product] = self.inventory.get(product, 0) + amount
-                self.model.log_event(
-                    event_type="delivery_received",
-                    agent_id=f"store_{self.unique_id}",
-                    location=self.pos,
-                    details=f"Получено: {product}: {amount}",
-                    status="completed"
-                )
-            return True
-        else:
-            # Доставка не может быть принята
-            self.model.log_event(
-                event_type="delivery_rejected",
-                agent_id=f"store_{self.unique_id}",
-                location=self.pos,
-                details=f"Доставка отклонена: вне рабочих часов",
-                status="rejected"
-            )
-            return False
-    
-    def step(self):
-        self.check_inventory()
+        """Прием доставки"""
+        print(f"\nПрием доставки в {self.name}")
+        print(f"Текущие запасы: {self.inventory}")
+        print(f"Получено: {products}")
+        
+        for product, amount in products.items():
+            self.inventory[product] = self.inventory.get(product, 0) + amount
+        
+        print(f"Новые запасы: {self.inventory}")
+        def step(self):
+            self.check_inventory()
 
 class VehicleAgent(Agent):
     def __init__(self, unique_id, model, capacity):
@@ -159,72 +144,31 @@ class VehicleAgent(Agent):
         
     def load_delivery(self, products, destination_store):
         """Загрузка товаров для доставки"""
-        # Проверяем возможность загрузки
-        optimized_products = self.optimize_load(products)
+        print(f"Загрузка машины {self.unique_id} для {destination_store.name}")
+        self.current_load = products
+        self.destination = destination_store
+        self.status = "en_route"
         
-        if optimized_products:
-            self.current_load = optimized_products
-            self.destination = destination_store
-            self.status = "en_route"
-            
-            self.model.log_event(
-                event_type="vehicle_dispatch",
-                agent_id=f"vehicle_{self.unique_id}",
-                location=self.pos,
-                details=f"Загружено: {optimized_products} для магазина {destination_store.unique_id} " \
-                       f"(использовано {self.get_current_load_weight()}/{self.capacity})",
-                status="en_route"
-            )
-            return True
-        else:
-            self.model.log_event(
-                event_type="vehicle_overload",
-                agent_id=f"vehicle_{self.unique_id}",
-                location=self.pos,
-                details=f"Невозможно загрузить {products} - превышение вместимости {self.capacity}",
-                status="rejected"
-            )
-            return False
-    
-    def complete_delivery(self):
-        """Завершение доставки с учетом временных окон"""
-        if self.destination and self.current_load:
-            # Проверяем, может ли магазин принять доставку
-            if self.destination.can_accept_delivery():
-                # Выполняем доставку
-                self.destination.receive_delivery(self.current_load)
-                self.model.log_event(
-                    event_type="delivery_complete",
-                    agent_id=f"vehicle_{self.unique_id}",
-                    location=self.destination.pos,
-                    details=f"Доставлено: {self.current_load}",
-                    status="completed"
-                )
-                self.current_load = {}
-                self.destination = None
-                self.status = "returning"
-            else:
-                # Если магазин не может принять доставку, ждем
-                self.model.log_event(
-                    event_type="delivery_waiting",
-                    agent_id=f"vehicle_{self.unique_id}",
-                    location=self.destination.pos,
-                    details="Ожидание доступного окна доставки",
-                    status="waiting"
-                )
-                # Оставляем текущее состояние без изменений
-                return False
-        return True
-    
+        self.model.log_event(
+            event_type="vehicle_dispatch",
+            agent_id=f"{destination_store.name}",
+            location=self.pos,
+            details=f"Машина {self.unique_id} загружена: {products}",
+            status="en_route"
+        )
+
     def step(self):
         """Один шаг симуляции для транспортного средства"""
+        print(f"Шаг машины {self.unique_id}, статус: {self.status}")
         if self.status == "en_route":
             # Симулируем движение к месту назначения
             if random.random() < 0.3:  # 30% шанс завершить доставку на каждом шаге
+                print(f"Пытаемся завершить доставку для {self.destination.name}")
                 self.complete_delivery()
         elif self.status == "returning":
             # Симулируем возврат на склад
             if random.random() < 0.5:  # 50% шанс вернуться на склад на каждом шаге
+                print(f"Машина {self.unique_id} вернулась на склад")
                 self.status = "idle"
                 self.model.log_event(
                     event_type="vehicle_return",
@@ -233,3 +177,43 @@ class VehicleAgent(Agent):
                     details="Возврат на склад",
                     status="idle"
                 )
+    
+    def complete_delivery(self):
+        """Завершение доставки с учетом временных окон"""
+        if self.destination and self.current_load:
+            print(f"\nПопытка доставки в {self.destination.name}")
+            print(f"Текущее время: {self.model.get_time_str()}")
+            print(f"Груз: {self.current_load}")
+            
+            # Проверяем, может ли магазин принять доставку
+            can_accept = self.destination.can_accept_delivery()
+            print(f"Магазин может принять доставку: {can_accept}")
+            
+            if can_accept:
+                # Выполняем доставку
+                print("Выполняем доставку...")
+                self.destination.receive_delivery(self.current_load)
+                self.model.log_event(
+                    event_type="delivery_complete",
+                    agent_id=f"{self.destination.name}",
+                    location=self.destination.pos,
+                    details=f"Доставлено машиной #{self.unique_id}: {self.current_load}",
+                    status="completed"
+                )
+                self.current_load = {}
+                self.destination = None
+                self.status = "returning"
+                print("Доставка завершена")
+            else:
+                # Если магазин не может принять доставку, ждем
+                print("Ожидаем доступное окно доставки")
+                self.model.log_event(
+                    event_type="delivery_waiting",
+                    agent_id=f"{self.destination.name}",
+                    location=self.destination.pos,
+                    details=f"Машина #{self.unique_id} ожидает доступного окна доставки",
+                    status="waiting"
+                )
+                return False
+        return True
+        
