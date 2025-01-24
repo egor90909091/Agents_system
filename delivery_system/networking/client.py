@@ -1,4 +1,3 @@
-# delivery_system/networking/client.py
 import socket
 import json
 from typing import Dict, Any

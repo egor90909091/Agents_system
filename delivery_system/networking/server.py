@@ -116,6 +116,7 @@ class DeliveryServer:
             print(f"Клиент отключен: {address}")
             
   
+    
     def process_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
         """Обработка сообщений от клиентов"""
         try:
@@ -137,7 +138,8 @@ class DeliveryServer:
                             'store_id': store_id,
                             'inventory': store.inventory,
                             'requirements': store.product_requirements,
-                            'location': store.pos
+                            'delivery_windows': store.delivery_windows,
+                            'name': store.name
                         }
                     }
                 else:
@@ -154,7 +156,8 @@ class DeliveryServer:
                             'vehicle_id': vehicle_id,
                             'status': vehicle.status,
                             'current_load': vehicle.current_load,
-                            'location': vehicle.pos
+                            'capacity': vehicle.capacity,
+                            'destination': vehicle.destination.name if vehicle.destination else None
                         }
                     }
                 else:
@@ -169,5 +172,5 @@ class DeliveryServer:
         except Exception as e:
             return {
                 'status': 'error',
-                'message': str(e)
+                'message': f'Error processing message: {str(e)}'
             }
