@@ -63,34 +63,36 @@ class WarehouseAgent(Agent):
 
     def process_order(self, store, needed_products):
         """Обработка заказа от магазина"""
-        print(f"\nОбработка заказа от {store.name}")
-        print(f"Запрошено: {needed_products}")
-        print(f"Текущие активные заказы: {self.active_orders}")
+        print(f"\n[Склад] Заказ от {store.name}: {needed_products}")
+        
+        # Проверяем, есть ли уже машина в пути к этому магазину
+        if store.awaiting_vehicle is not None:
+            print(f"-> Ожидается машина {store.awaiting_vehicle}: {store.expected_deliveries}")
+            return None
 
-        # Рассчитываем, сколько уже едет в этот магазин
+        # Считаем, сколько уже едет в этот магазин
         in_delivery = {}
         if store.name in self.active_orders:
             in_delivery = self.active_orders[store.name]
-            print(f"Уже в пути: {in_delivery}")
+            print(f"-> Уже в пути: {in_delivery}")
 
-        # Вычисляем, сколько еще реально нужно доставить
+        # Вычисляем, сколько еще нужно довезти с учетом уже отправленного
         remaining_needs = {}
         for product, needed_total in needed_products.items():
-            # Вычитаем то, что уже едет
             already_in_delivery = in_delivery.get(product, 0)
-            still_needed = needed_total - already_in_delivery
+            max_can_deliver = store.product_requirements[product]
+            still_needed = min(needed_total, max_can_deliver) - already_in_delivery
             
             if still_needed > 0:
                 remaining_needs[product] = still_needed
+                print(f"-> {product}: требуется {needed_total}, в пути {already_in_delivery}")
 
         if not remaining_needs:
-            print("Нужное количество товаров уже в пути")
+            print("-> Нужное количество товаров уже в пути")
             return None
 
-        print(f"Ещё требуется доставить: {remaining_needs}")
-
         if not store.can_accept_delivery():
-            print(f"{store.name} сейчас не может принять доставку")
+            print(f"-> {store.name} сейчас не может принять доставку")
             return False
 
         # Ищем свободную машину
@@ -98,15 +100,16 @@ class WarehouseAgent(Agent):
             if vehicle.status == "idle":
                 available_products = {}
                 total_weight = 0
+                current_remaining = remaining_needs.copy()
 
                 # Сортируем продукты по количеству
-                sorted_needs = sorted(remaining_needs.items(), key=lambda x: x[1], reverse=True)
+                sorted_needs = sorted(remaining_needs.items(), 
+                                    key=lambda x: x[1], reverse=True)
 
                 for product, needed in sorted_needs:
                     if total_weight >= vehicle.capacity:
                         break
 
-                    # Проверяем наличие на складе
                     stock_available = self.inventory.get(product, 0)
                     if stock_available <= 0:
                         continue
@@ -118,34 +121,46 @@ class WarehouseAgent(Agent):
                     if can_take > 0:
                         available_products[product] = can_take
                         total_weight += can_take
+                        self.inventory[product] -= can_take
+                        current_remaining[product] -= can_take
+                        if current_remaining[product] <= 0:
+                            del current_remaining[product]
 
                 if available_products:
-                    print(f"Загружаем в машину {vehicle.unique_id}: {available_products}")
-                    if vehicle.load_delivery(available_products, store):
+                    print(f"-> Загружаем в машину {vehicle.unique_id}: {available_products}")
+                    
+                    # Проверяем, не превысим ли максимальную вместимость магазина
+                    can_deliver = True
+                    proposed_deliveries = {}
+                    
+                    for product, amount in available_products.items():
+                        current_in_delivery = self.active_orders.get(store.name, {}).get(product, 0)
+                        total_would_be = current_in_delivery + amount
+                        
+                        if total_would_be > store.product_requirements[product]:
+                            print(f"-> Нельзя отправить {product}: превышение вместимости")
+                            print(f"   В пути: {current_in_delivery}")
+                            print(f"   Пытаемся добавить: {amount}")
+                            print(f"   Максимум: {store.product_requirements[product]}")
+                            can_deliver = False
+                            break
+                        proposed_deliveries[product] = amount
+                    
+                    if can_deliver and vehicle.load_delivery(proposed_deliveries, store):
                         # Обновляем активные заказы
                         if store.name not in self.active_orders:
                             self.active_orders[store.name] = {}
-                        for product, amount in available_products.items():
+                        for product, amount in proposed_deliveries.items():
                             current = self.active_orders[store.name].get(product, 0)
                             self.active_orders[store.name][product] = current + amount
-                            self.inventory[product] -= amount
 
-                        # Проверяем, остались ли еще незаказанные товары
-                        still_needed = {}
-                        for product, needed in remaining_needs.items():
-                            delivered = available_products.get(product, 0)
-                            if needed > delivered:
-                                still_needed[product] = needed - delivered
-
-                        print(f"Активные заказы после загрузки: {self.active_orders}")
-                        if still_needed:
-                            print(f"Ещё требуется доставить: {still_needed}")
-                        else:
-                            print("Весь заказ распределен по машинам")
-
+                        if current_remaining:
+                            print(f"-> Осталось доставить: {current_remaining}")
+                        
+                        print(f"-> Активные заказы для {store.name}: {self.active_orders.get(store.name, {})}")
                         return True
 
-        print("Нет свободных машин")
+        print("-> Нет свободных машин")
         return False
 
     def complete_delivery(self, store, products):
@@ -183,26 +198,41 @@ class WarehouseAgent(Agent):
 
 
 
-
-
 class StoreAgent(Agent):
     def __init__(self, unique_id, model, delivery_windows, product_requirements):
         super().__init__(unique_id, model)
         self.name = None
         self.delivery_windows = delivery_windows
-        self.product_requirements = product_requirements  # Максимальные уровни запасов
+        self.product_requirements = product_requirements
         self.inventory = {product: 0 for product in product_requirements}
+        self.expected_deliveries = {}  # Добавляем отслеживание ожидаемых поставок
+        self.awaiting_vehicle = None   # Добавляем отслеживание машины
+
+    def add_expected_delivery(self, products, vehicle_id):
+        """Добавление информации об ожидаемой поставке"""
+        self.expected_deliveries.update(products)
+        self.awaiting_vehicle = vehicle_id
+        self.model.log_event(
+            "delivery_waiting",
+            self.name,
+            f"Ожидание поставки",
+            f"Ожидается машина {vehicle_id} с товарами: {products}",
+            "waiting"
+        )
 
     def receive_delivery(self, products):
         """Прием доставки"""
         print(f"\nПрием доставки в {self.name}")
+        
+        # Получаем warehouse для обновления активных заказов
+        warehouse = next(agent for agent in self.model.schedule.agents 
+                        if isinstance(agent, WarehouseAgent))
         
         # Проверяем, не превысим ли максимальные уровни
         proposed_inventory = self.inventory.copy()
         for product, amount in products.items():
             proposed_inventory[product] = proposed_inventory.get(product, 0) + amount
             
-            # Если после доставки будет больше требуемого - отказываемся
             if proposed_inventory[product] > self.product_requirements[product]:
                 print(f"Отказ в приеме доставки: превышение требуемого количества {product}")
                 print(f"Текущий запас: {self.inventory[product]}")
@@ -216,8 +246,30 @@ class StoreAgent(Agent):
         
         for product, amount in products.items():
             self.inventory[product] = proposed_inventory[product]
+            # Уменьшаем ожидаемые поставки
+            if product in self.expected_deliveries:
+                self.expected_deliveries[product] = max(0, 
+                    self.expected_deliveries[product] - amount)
+                if self.expected_deliveries[product] == 0:
+                    del self.expected_deliveries[product]
+                    
+            # Уменьшаем активные заказы
+            if self.name in warehouse.active_orders and product in warehouse.active_orders[self.name]:
+                warehouse.active_orders[self.name][product] = max(0, 
+                    warehouse.active_orders[self.name][product] - amount)
+                if warehouse.active_orders[self.name][product] == 0:
+                    del warehouse.active_orders[self.name][product]
+                    
+        # Если все активные заказы выполнены, удаляем запись о магазине
+        if self.name in warehouse.active_orders and not warehouse.active_orders[self.name]:
+            del warehouse.active_orders[self.name]
+        
+        # Если все доставлено, очищаем информацию об ожидании
+        if not self.expected_deliveries:
+            self.awaiting_vehicle = None
             
         print(f"Новые запасы: {self.inventory}")
+        print(f"Обновленные активные заказы: {warehouse.active_orders}")
         return True
 
     def can_accept_delivery(self) -> bool:
@@ -267,25 +319,47 @@ class StoreAgent(Agent):
 
     def check_inventory_and_make_order(self):
         """Проверка запасов и формирование заказа"""
-        needed_products = {}
-        print(f"\nПроверка запасов в {self.name}")
-        print(f"Требуемые уровни: {self.product_requirements}")
-        print(f"Текущие запасы: {self.inventory}")
+        # Получаем warehouse для проверки активных заказов
+        warehouse = next(agent for agent in self.model.schedule.agents 
+                        if isinstance(agent, WarehouseAgent))
         
+        active_orders = warehouse.active_orders.get(self.name, {})
+        
+        print(f"\n[{self.name}] Запасы: {self.inventory}")
+        
+        # Проверяем активные заказы
+        if active_orders:
+            print(f"-> В обработке: {active_orders}")
+            return None
+            
+        # Проверяем ожидание машины
+        if self.awaiting_vehicle:
+            print(f"-> Ожидается машина {self.awaiting_vehicle}: {self.expected_deliveries}")
+            return None
+
+        needed_products = {}
+        
+        # Проверяем каждый продукт
         for product, required in self.product_requirements.items():
             current = self.inventory.get(product, 0)
-            if current < required:
-                needed_amount = required - current
+            expected = self.expected_deliveries.get(product, 0)
+            in_active_orders = active_orders.get(product, 0)
+            total_available = current + expected + in_active_orders
+            
+            # Если общее количество меньше требуемого
+            if total_available < required:
+                needed_amount = required - total_available
                 needed_products[product] = needed_amount
-                print(f"Не хватает {product}: {needed_amount}")
         
+        # Формируем заказ если что-то требуется
         if needed_products:
-            print(f"Формируем заказ: {needed_products}")
+            print(f"-> Требуется пополнить: {', '.join(f'{p}:{q}' for p, q in needed_products.items())}")
             return needed_products
             
-        print("Все запасы в норме")
+        print("-> Все запасы в норме")
         return None
-        
+
+
     def step(self):
         """Один шаг симуляции для магазина"""
         # Сначала расходуем товары
@@ -318,9 +392,6 @@ class StoreAgent(Agent):
 
 
 
-
-
-
 class VehicleAgent(Agent):
     def __init__(self, unique_id, model, capacity):
         super().__init__(unique_id, model)
@@ -331,70 +402,87 @@ class VehicleAgent(Agent):
         self.pos = None
 
     def get_current_load_weight(self):
-        """Получить общий вес текущего груза"""
+        """Получить текущий вес груза"""
         return sum(self.current_load.values())
 
-    def get_available_capacity(self):
-        """Получить доступную вместимость"""
-        return self.capacity - self.get_current_load_weight()
-
-    def optimize_load(self, requested_products: dict) -> dict:
-        """Оптимизация загрузки с учетом вместимости"""
-        print(f"\nОптимизация загрузки для машины {self.unique_id}")
-        print(f"Запрошено: {requested_products}")
-        print(f"Доступная вместимость: {self.get_available_capacity()}")
-
-        available_capacity = self.get_available_capacity()
-        if available_capacity <= 0:
-            print("Нет доступной вместимости")
-            return {}
-
-        optimized_load = {}
-        remaining_capacity = available_capacity
-
-        # Сортируем продукты по важности (можно настроить приоритеты)
-        for product, amount in requested_products.items():
-            # Если есть место хотя бы для части продукта
-            if remaining_capacity > 0:
-                # Берём максимально возможное количество
-                can_take = min(amount, remaining_capacity)
-                optimized_load[product] = can_take
-                remaining_capacity -= can_take
-                print(f"Добавлено {product}: {can_take}, осталось места: {remaining_capacity}")
-
-        print(f"Итоговая загрузка: {optimized_load}")
-        return optimized_load
-
+    
     def load_delivery(self, products, destination_store):
         """Загрузка товаров для доставки"""
-        print(f"\nЗагрузка машины {self.unique_id} для {destination_store.name}")
-        print(f"Запрошено: {products}")
-        print(f"Доступная вместимость: {self.get_available_capacity()}")
+        print(f"[Машина {self.unique_id}] Загрузка для {destination_store.name}")
+        print(f"-> Заказано: {products}")
+        print(f"-> Доступная вместимость: {self.capacity - self.get_current_load_weight()}")
 
+        self.destination = destination_store
         optimized_load = self.optimize_load(products)
-        print(f"Оптимизированная загрузка: {optimized_load}")
 
         if optimized_load:
             self.current_load = optimized_load
-            self.destination = destination_store
             self.status = "en_route"
-
-            # Записываем в лог информацию о частичной/полной загрузке
-            is_partial = optimized_load != products
-            status_text = "частичная загрузка" if is_partial else "полная загрузка"
             
-            self.model.log_event(
-                event_type="vehicle_dispatch",
-                agent_id=f"{destination_store.name}",
-                location=self.pos,
-                details=(f"Машина {self.unique_id} загружена ({status_text}): {optimized_load}. " +
-                        f"Использовано {self.get_current_load_weight()}/{self.capacity}"),
-                status="en_route"
-            )
+            # Уведомляем магазин о предстоящей доставке
+            destination_store.add_expected_delivery(optimized_load, self.unique_id)
+            print(f"-> Загружено и отправлено: {optimized_load}")
+            
             return True
+        return False
+
+    def optimize_load(self, requested_products):
+        """Оптимизация загрузки с учетом вместимости"""
+        if self.capacity <= 0:
+            return {}
+
+        total_requested = sum(requested_products.values())
+        optimized_load = {}
+        
+        if total_requested <= self.capacity:
+            return requested_products.copy()
         else:
-            print("Загрузка невозможна - нет места")
-            return False
+            remaining_capacity = self.capacity
+            sorted_products = sorted(requested_products.items(), 
+                                   key=lambda x: x[1], reverse=True)
+            
+            for product, amount in sorted_products:
+                if remaining_capacity <= 0:
+                    break
+                    
+                can_take = min(amount, remaining_capacity)
+                optimized_load[product] = can_take
+                remaining_capacity -= can_take
+
+        return optimized_load
+
+    def step(self):
+        """Один шаг симуляции для транспортного средства"""
+        if self.status == "en_route":
+            # Симулируем движение к месту назначения
+            if random.random() < 0.3:  # 30% шанс завершить доставку
+                if self.destination.can_accept_delivery():
+                    print(f"[Машина {self.unique_id}] Прибыла к {self.destination.name}")
+                    if self.destination.receive_delivery(self.current_load):
+                        print(f"-> Доставка выполнена: {self.current_load}")
+                        self.current_load = {}
+                        self.destination = None
+                        self.status = "returning"
+                        print(f"-> Возвращается на склад")
+                    else:
+                        print(f"-> Доставка отклонена")
+                else:
+                    print(f"[Машина {self.unique_id}] Ожидает окно доставки у {self.destination.name}")
+        
+        elif self.status == "returning":
+            # Симулируем возврат на склад
+            if random.random() < 0.4:  # 40% шанс вернуться
+                self.status = "idle"
+                print(f"[Машина {self.unique_id}] Вернулась на склад, готова к новым заказам")
+        
+        elif self.status == "idle":
+            if random.random() < 0.1:  # Периодически сообщаем о готовности
+
+                print(f"[Машина {self.unique_id}] Готова к новым заказам")
+
+
+
+
 
     def complete_delivery(self):
         """Завершение доставки с учетом временных окон"""
@@ -433,20 +521,4 @@ class VehicleAgent(Agent):
                 )
                 return False
         return True
-    def step(self):
-        """Один шаг симуляции для транспортного средства"""
-        if self.status == "en_route":
-            # Симулируем движение к месту назначения
-            if random.random() < 0.3:  # 30% шанс завершить доставку на каждом шаге
-                self.complete_delivery()
-        elif self.status == "returning":
-            # Симулируем возврат на склад
-            if random.random() < 0.5:  # 50% шанс вернуться на склад на каждом шаге
-                self.status = "idle"
-                self.model.log_event(
-                    event_type="vehicle_return",
-                    agent_id=f"vehicle_{self.unique_id}",
-                    location=(0, 0),  # Позиция склада
-                    details="Возврат на склад",
-                    status="idle"
-                )
+    
