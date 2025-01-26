@@ -1,32 +1,60 @@
-# delivery_system/scheduler.py
-from datetime import datetime, timedelta
-import csv
+
+
 import networkx as nx
+from datetime import datetime, timedelta
+import random
+import csv
+
 
 class DeliveryScheduler:
     def __init__(self, model):
         self.model = model
         self.schedule = []
         self.route_graph = nx.Graph()
+        self._agents = {}
         self._build_graph()
+        self._add_all_agents()
         
     def _build_graph(self):
         """Создание графа маршрутов с использованием матрицы расстояний"""
         # Добавляем склад
-        self.route_graph.add_node("склад", pos=self.model.warehouse.pos)
+        self.route_graph.add_node("склад")
         
         # Добавляем магазины
         for store in self.model.stores:
             self.route_graph.add_node(store.name, 
-                                    pos=store.pos,
-                                    windows=store.delivery_windows)
+                                    delivery_windows=store.delivery_windows)
         
         # Добавляем рёбра с реальными расстояниями из матрицы
         distances = self.model.data['distances']
         for from_node, to_nodes in distances.items():
             for to_node, distance in to_nodes.items():
                 self.route_graph.add_edge(from_node, to_node, weight=distance)
-    
+
+    def _add_all_agents(self):
+        """Добавление всех агентов в планировщик"""
+        # Добавляем склад
+        self.add(self.model.warehouse)
+        
+        # Добавляем магазины
+        for store in self.model.stores:
+            self.add(store)
+            
+        # Добавляем транспорт
+        for vehicle in self.model.vehicles:
+            self.add(vehicle)
+
+    def add(self, agent):
+        """Добавление агента в планировщик"""
+        self._agents[agent.unique_id] = agent
+        
+    def step(self):
+        """Выполняем один шаг для всех агентов в случайном порядке."""
+        agent_keys = list(self._agents.keys())
+        random.shuffle(agent_keys)
+        for agent_key in agent_keys:
+            self._agents[agent_key].step()
+
     def calculate_delivery_cost(self, distance: float, time_window: tuple, 
                               load_weight: float) -> float:
         """Расчет стоимости доставки на основе расстояния"""
@@ -50,9 +78,8 @@ class DeliveryScheduler:
             time_cost = 0
             
         total_cost = base_cost + km_cost + weight_cost + time_cost
-        
         return round(total_cost, 2)
-    
+
     def generate_schedule(self):
         """Генерация расписания доставок"""
         current_time = datetime.strptime("09:00", "%H:%M")
@@ -88,7 +115,7 @@ class DeliveryScheduler:
                     
                     # Добавляем доставку в расписание
                     delivery_slot = {
-                        'store_id': store.name,  # Используем имя магазина
+                        'store_id': store.name,
                         'departure_time': current_time.strftime("%H:%M"),
                         'arrival_time': (current_time + delivery_time).strftime("%H:%M"),
                         'products': store.product_requirements,
@@ -103,7 +130,7 @@ class DeliveryScheduler:
                     break
         
         return total_cost
-    
+
     def save_schedule(self, filename: str):
         """Сохранение расписания в файл"""
         # Сохраняем в CSV

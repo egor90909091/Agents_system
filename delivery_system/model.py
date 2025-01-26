@@ -11,7 +11,6 @@ from .scheduler import DeliveryScheduler
 class DeliveryModel(Model):
     def __init__(self, input_file: str):
         super().__init__()
-        self.schedule = RandomActivation(self)
         self.delivery_log = []
         
         # Добавляем модельное время
@@ -22,36 +21,30 @@ class DeliveryModel(Model):
         with open(input_file, 'r', encoding='utf-8') as f:
             self.data = json.load(f)
             
-        # Инициализация агентов
+        # Сначала инициализируем агентов
         self.init_agents()
         
-        # Добавляем планировщик
+        # Затем создаем планировщик, когда все агенты уже созданы
         self.scheduler = DeliveryScheduler(self)
         self.scheduler.generate_schedule()
         self.scheduler.save_schedule("delivery_schedule")
-
-    def get_time_str(self) -> str:
-        """Получение текущего времени в строковом формате"""
-        return self.current_time.strftime("%H:%M")
 
     def init_agents(self):
         """Инициализация всех агентов"""
         # Инициализация склада
         self.warehouse = WarehouseAgent(0, self, self.data['склад']['inventory'])
-        self.schedule.add(self.warehouse)
         
         # Инициализация магазинов
         self.stores = []
         for store_data in self.data['stores']:
             store = StoreAgent(
-                store_data['id'],
-                self,
-                store_data['delivery_windows'],
-                store_data['product_requirements']
+                store_data['id'],  # unique_id
+                self,              # model
+                store_data['delivery_windows'],      # delivery_windows
+                store_data['product_requirements']   # product_requirements
             )
             store.name = store_data['name']
             self.stores.append(store)
-            self.schedule.add(store)
             
             self.log_event(
                 "store_status",
@@ -70,7 +63,6 @@ class DeliveryModel(Model):
                 vehicle_data['capacity']
             )
             self.vehicles.append(vehicle)
-            self.schedule.add(vehicle)
             
             self.log_event(
                 "vehicle_status",
@@ -79,7 +71,11 @@ class DeliveryModel(Model):
                 f"Готов к работе. Вместимость: {vehicle_data['capacity']}",
                 "idle"
             )
+    def get_time_str(self) -> str:
+        """Получение текущего времени в строковом формате"""
+        return self.current_time.strftime("%H:%M")
 
+    
     def simulate_events(self):
         """Симуляция различных событий в системе"""
         print(f"\nСимуляция в {self.get_time_str()}")
@@ -121,9 +117,10 @@ class DeliveryModel(Model):
         if self.current_time.hour >= 23 and self.current_time.minute >= 45:
             self.current_time = datetime.strptime("09:00", "%H:%M")
             
-        print(f"Модельное время: {self.get_time_str()}")
+        print(f"\nМодельное время: {self.get_time_str()}")
         
-        self.schedule.step()
+        # Используем scheduler вместо schedule
+        self.scheduler.step()
         self.simulate_events()
         
     def log_event(self, event_type: str, agent_id: str, event_desc: str, 
