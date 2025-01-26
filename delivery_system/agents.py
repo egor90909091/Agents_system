@@ -101,6 +101,12 @@ class WarehouseAgent(Agent):
         """Обработка заказа от магазина"""
         print(f"\n[Склад] Заказ от {store.name}: {needed_products}")
 
+        # Проверяем актуальность информации о доставках
+        for vehicle in self.model.vehicles:
+            if vehicle.status == "idle" and store.name in self.active_orders:
+                print(f"Очистка устаревшей информации о доставке для {store.name}")
+                self.clear_completed_order(store)
+                break
         # Считаем, сколько уже едет в этот магазин
         in_delivery = self.active_orders.get(store.name, {})
         if in_delivery:
@@ -198,7 +204,10 @@ class WarehouseAgent(Agent):
     def clear_completed_order(self, store):
         """Очистка выполненного заказа"""
         if store.name in self.active_orders:
+            print(f"\nОчистка информации о завершенной доставке для {store.name}")
+            print(f"Было активных заказов: {self.active_orders}")
             del self.active_orders[store.name]
+            print(f"Стало активных заказов: {self.active_orders}")
         if store.name in self.pending_stores:
             del self.pending_stores[store.name]
 
@@ -277,21 +286,24 @@ class StoreAgent(Agent):
         # Проверяем текущие запасы
         print(f"\n[{self.name}] Запасы: {self.inventory}")
         
-        # Если нет активных заказов и нет ожидающих доставок, проверяем необходимость заказа
+        # Если запасы ниже 80% от требуемого - делаем заказ
         if not self.awaiting_vehicle:
-            needed_products = self.check_inventory_and_make_order()
-            if needed_products:
-                print(f"-> Требуется пополнить: {', '.join(f'{p}:{q}' for p, q in needed_products.items())}")
-                # Пытаемся сделать заказ
-                order_status = self.model.warehouse.process_order(self, needed_products)
-                if order_status:
-                    self.model.log_event(
-                        "store_needs",
-                        self.name,
-                        "Требуется доставка",
-                        f"Требуется доставка: {needed_products}",
-                        "pending"
-                    )
+            for product, required in self.product_requirements.items():
+                current = self.inventory.get(product, 0)
+                if current < (required * 0.8):  # Порог в 80%
+                    needed_products = self.check_inventory_and_make_order()
+                    if needed_products:
+                        print(f"-> Требуется пополнить: {', '.join(f'{p}:{q}' for p, q in needed_products.items())}")
+                        order_status = self.model.warehouse.process_order(self, needed_products)
+                        if order_status:
+                            self.model.log_event(
+                                "store_needs",
+                                self.name,
+                                "Требуется доставка",
+                                f"Требуется доставка: {needed_products}",
+                                "pending"
+                            )
+                    break
 
     def check_inventory_and_make_order(self):
         """Проверка запасов и формирование заказа"""
@@ -301,8 +313,8 @@ class StoreAgent(Agent):
         for product, required in self.product_requirements.items():
             current = self.inventory.get(product, 0)
             
-            # Если текущий запас меньше требуемого
-            if current < required:
+            # Если текущий запас меньше 70% от требуемого
+            if current < (required * 0.7):
                 needed_amount = required - current
                 needed_products[product] = needed_amount
         
@@ -310,59 +322,60 @@ class StoreAgent(Agent):
 
     def consume_products(self):
         """Расход товаров"""
-        consumption_happened = False
-        used_products = []
-        
-        for product in list(self.inventory.keys()):
-            current_amount = self.inventory[product]
-            if current_amount > 0:  
-                if random.random() < 0.3:  # Уменьшаем вероятность расхода до 30%
-                    # Расходуем 10-20% от текущего количества
-                    consumption = max(1, int(current_amount * random.uniform(0.1, 0.2)))
-                    if consumption > current_amount:
-                        consumption = current_amount
+        # 55% шанс что магазин будет тратить товары
+        if random.random() < 0.55:
+            consumption_happened = False
+            used_products = []
+            
+            for product in list(self.inventory.keys()):
+                current_amount = self.inventory[product]
+                if current_amount > 0:  
+                    # 50% шанс что конкретный товар будет потрачен
+                    if random.random() < 0.5:
+                        # Расходуем 20% от текущего количества
+                        consumption = max(1, int(current_amount * 0.2))
+                        if consumption > current_amount:
+                            consumption = current_amount
+                            
+                        self.inventory[product] = current_amount - consumption
+                        used_products.append(f"{product}: -{consumption} (было: {current_amount}, стало: {self.inventory[product]})")
+                        consumption_happened = True
                         
-                    self.inventory[product] = current_amount - consumption
-                    used_products.append(f"{product}: -{consumption} (было: {current_amount}, стало: {self.inventory[product]})")
-                    consumption_happened = True
-                    
-                    self.model.log_event(
-                        "product_consumption",
-                        self.name,
-                        "Расход товаров",
-                        f"Расход {product}: {consumption} (осталось: {self.inventory[product]})",
-                        "consumed"
-                    )
-        
-        if consumption_happened:
-            print(f"\nРасход товаров в {self.name}")
-            for msg in used_products:
-                print(msg)
-            print(f"Запасы после расхода: {self.inventory}")
+                        self.model.log_event(
+                            "product_consumption",
+                            self.name,
+                            "Расход товаров",
+                            f"Расход {product}: {consumption} (осталось: {self.inventory[product]})",
+                            "consumed"
+                        )
+            
+            if consumption_happened:
+                print(f"\nРасход товаров в {self.name}")
+                for msg in used_products:
+                    print(msg)
+                print(f"Запасы после расхода: {self.inventory}")
 
     def receive_delivery(self, products):
         """Прием доставки"""
         print(f"\nПрием доставки в {self.name}")
         
-        # Обновляем запасы
+        # Проверяем, не превысим ли максимальные уровни
+        proposed_inventory = self.inventory.copy()
         for product, amount in products.items():
-            current = self.inventory.get(product, 0)
-            self.inventory[product] = current + amount
+            proposed_inventory[product] = proposed_inventory.get(product, 0) + amount
             
+            if proposed_inventory[product] > self.product_requirements[product]:
+                print(f"Отказ в приеме доставки: превышение требуемого количества {product}")
+                return False
+
+        # Если все проверки пройдены - принимаем доставку
+        self.inventory = proposed_inventory
         print(f"Новые запасы: {self.inventory}")
         
-        # Очищаем информацию об ожидании
+        # Очищаем все данные о доставке
         self.expected_deliveries = {}
         self.awaiting_vehicle = None
-        
-        # Логируем успешную доставку
-        self.model.log_event(
-            "delivery_received",
-            self.name,
-            "Доставка принята",
-            f"Получено: {products}",
-            "completed"
-        )
+        self.model.warehouse.clear_completed_order(self)
         
         return True
 
@@ -507,6 +520,9 @@ class VehicleAgent(Agent):
                 # Пытаемся разгрузиться
                 if self.destination.receive_delivery(self.current_load):
                     print(f"-> Доставка выполнена: {self.current_load}")
+                    
+                    # Очищаем информацию о доставке на складе
+                    self.model.warehouse.clear_completed_order(self.destination)
                     
                     # Получаем расстояние до склада из матрицы расстояний
                     return_distance = self.model.data['distances'][self.destination.name]['склад']

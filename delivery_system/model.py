@@ -80,10 +80,13 @@ class DeliveryModel(Model):
         """Симуляция различных событий в системе"""
         print(f"\nСимуляция в {self.get_time_str()}")
         
+        # Сначала вызываем step() для всех магазинов
+        for store in self.stores:
+            store.step()
+        
         # Проверяем и обрабатываем заказы от всех магазинов
         for store in self.stores:
             needed_products = store.check_inventory_and_make_order()
-            
             if needed_products:
                 print(f"Обработка заказа от {store.name}: {needed_products}")
                 
@@ -97,16 +100,6 @@ class DeliveryModel(Model):
                 
                 # Обрабатываем заказ через склад
                 self.warehouse.process_order(store, needed_products)
-                    
-        # Обновление состояния склада
-        if random.random() < 0.2:  # 20% шанс
-            self.log_event(
-                "warehouse_status",
-                "Склад",
-                "Обновление статуса",
-                f"Текущие запасы: {self.warehouse.inventory}\nАктивные заказы: {self.warehouse.active_orders}",
-                "updated"
-            )
 
     def step(self):
         """Один шаг симуляции"""
