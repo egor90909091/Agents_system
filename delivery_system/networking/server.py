@@ -6,7 +6,7 @@ from typing import Dict, Any
 import signal
 
 class DeliveryServer:
-    def __init__(self, host: str = '0.0.0.0', port: int = 5000):
+    def __init__(self, host: str = '0.0.0.0', port: int = 5001):
         self.host = host
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
