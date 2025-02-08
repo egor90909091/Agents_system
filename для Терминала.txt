@@ -1,7 +1,7 @@
 cd G:\mas_delivery_system  
 py -3.9 -m venv venv
 .\venv\Scripts\Activate.ps1
-$env:PYTHONPATH = "G:\mas_delivery_system"
+$env:PYTHONPATH = "/Users/egorsavin/mas_delivery_service"
 python scripts/run_client.py 
 
 
@@ -12,5 +12,20 @@ IP???
 cd G:\mas_delivery_system  
 py -3.9 -m venv venv
 .\venv\Scripts\Activate.ps1
-$env:PYTHONPATH = "G:\mas_delivery_system"
+$env:PYTHONPATH = "/Users/egorsavin/mas_delivery_service
 python scripts/run_server.py
+
+MAC OS
+
+cd /Users/egorsavin/mas_delivery_service
+python3.9 -m venv mas_delivery_service
+source ./bin/activate
+export PYTHONPATH=$PYTHONPATH:"/Users/egorsavin/mas_delivery_service"
+python3.9 scripts/run_server.py
+
+
+cd /Users/egorsavin/mas_delivery_service
+python3.9 -m venv mas_delivery_service
+source ./bin/activate
+export PYTHONPATH=$PYTHONPATH:"/Users/egorsavin/mas_delivery_service"
+python3.9 scripts/run_client.py
