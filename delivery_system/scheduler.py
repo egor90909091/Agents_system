@@ -132,38 +132,27 @@ class DeliveryScheduler:
         return total_cost
 
     def save_schedule(self, filename: str):
-        """Сохранение расписания в файл"""
-        # Сохраняем в CSV
-        with open(f"data/{filename}.csv", 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=[
-                'store_id', 'departure_time', 'arrival_time', 
-                'products', 'distance', 'cost', 'route'
-            ])
-            writer.writeheader()
-            writer.writerows(self.schedule)
-            
-        # Создаем читаемый документ
-        with open(f"data/{filename}.txt", 'w', encoding='utf-8') as f:
-            f.write("РАСПИСАНИЕ ДОСТАВОК\n")
-            f.write("=" * 50 + "\n\n")
-            
-            for slot in self.schedule:
-                f.write(f"Магазин: {slot['store_id']}\n")
-                f.write(f"Время выезда: {slot['departure_time']}\n")
-                f.write(f"Время прибытия: {slot['arrival_time']}\n")
-                f.write("Товары для доставки:\n")
-                for product, amount in eval(str(slot['products'])).items():
-                    f.write(f"  - {product}: {amount} шт.\n")
-                f.write(f"Маршрут: {slot['route']}\n")
-                f.write(f"Расстояние: {slot['distance']} км\n")
-                f.write(f"Стоимость доставки: {slot['cost']} руб.\n")
-                f.write("-" * 30 + "\n\n")
-                
-            # Общая статистика
-            total_cost = sum(slot['cost'] for slot in self.schedule)
-            total_distance = sum(slot['distance'] for slot in self.schedule)
-            f.write("\nОБЩАЯ СТАТИСТИКА\n")
-            f.write("=" * 50 + "\n")
-            f.write(f"Общая стоимость доставок: {total_cost} руб.\n")
-            f.write(f"Количество рейсов: {len(self.schedule)}\n")
-            f.write(f"Общее расстояние: {total_distance} км\n")
+        """Метод теперь только выводит информацию в консоль"""
+        print("\nРАСПИСАНИЕ ДОСТАВОК")
+        print("=" * 50 + "\n")
+        
+        for slot in self.schedule:
+            print(f"Магазин: {slot['store_id']}")
+            print(f"Время выезда: {slot['departure_time']}")
+            print(f"Время прибытия: {slot['arrival_time']}")
+            print("Товары для доставки:")
+            for product, amount in eval(str(slot['products'])).items():
+                print(f"  - {product}: {amount} шт.")
+            print(f"Маршрут: {slot['route']}")
+            print(f"Расстояние: {slot['distance']} км")
+            print(f"Стоимость доставки: {slot['cost']} руб.")
+            print("-" * 30 + "\n")
+        
+        # Общая статистика
+        total_cost = sum(slot['cost'] for slot in self.schedule)
+        total_distance = sum(slot['distance'] for slot in self.schedule)
+        print("\nОБЩАЯ СТАТИСТИКА")
+        print("=" * 50)
+        print(f"Общая стоимость доставок: {total_cost} руб.")
+        print(f"Количество рейсов: {len(self.schedule)}")
+        print(f"Общее расстояние: {total_distance} км")

@@ -79,6 +79,9 @@ def main():
     parser.add_argument(
         "--port", type=int, default=5001, help="Порт сервера (по умолчанию: 5001)"
     )
+    parser.add_argument(
+        "--delay", type=int, default=15, help="Задержка между шагами в секундах (по умолчанию: 15)"
+    )
 
     args = parser.parse_args()
     client = DeliveryClient(host=args.server, port=args.port)
@@ -90,6 +93,14 @@ def main():
         print("Успешное подключение к серверу!")
 
         while True:
+            # Получаем текущее время симуляции
+            response = client.send_message({"type": "get_simulation_time"})
+            if response["status"] == "success":
+                current_time = response["data"]["time"]
+                print("\n" + "=" * 50)
+                print(f"🕒 ВРЕМЯ СИМУЛЯЦИИ: {current_time}")
+                print("=" * 50)
+            
             print("\nСТАТУС СИСТЕМЫ")
             print("=" * 50)
 
@@ -102,13 +113,16 @@ def main():
 
             # Запрашиваем статус машин
             print("\nТРАНСПОРТ:")
-            for vehicle_id in [1, 2]:  # Предполагаем, что у нас две машины
+            for vehicle_id in [1, 2]:
                 request = {"type": "get_vehicle_status", "vehicle_id": vehicle_id}
                 response = client.send_message(request)
                 print(format_vehicle_status(response))
 
             print("\n" + "=" * 50)
-            time.sleep(5)  # Пауза между обновлениями
+            
+            # Задержка перед следующим шагом
+            print(f"\nСледующее обновление через {args.delay} секунд...")
+            time.sleep(args.delay)  # Пауза между обновлениями
 
     except ConnectionRefusedError:
         print(f"Ошибка: Не удалось подключиться к серверу {args.server}:{args.port}")
@@ -117,7 +131,6 @@ def main():
     finally:
         client.disconnect()
         print("Клиент остановлен")
-
 
 if __name__ == "__main__":
     main()

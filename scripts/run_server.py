@@ -4,11 +4,13 @@ from delivery_system.model import DeliveryModel
 import os
 
 
-def main():
-    # Создаем директорию для данных, если её нет
-    os.makedirs("data", exist_ok=True)
+from delivery_system.networking.server import DeliveryServer
+from delivery_system.model import DeliveryModel
+import os
 
-    # Инициализируем модель с данными из файла
+
+def main():
+    # Файл находится в папке data в корне проекта
     input_file = "data/input_data.json"
 
     # Проверяем существование файла
@@ -20,7 +22,7 @@ def main():
     server = DeliveryServer(host="0.0.0.0", port=5001)
     server.model = model
 
-    print(f"Запуск сервера на localhost:5000...")
+    print(f"Запуск сервера на localhost:5001...")
     server.start()
 
 
