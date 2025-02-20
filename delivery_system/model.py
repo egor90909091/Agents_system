@@ -8,10 +8,6 @@ from mesa.time import RandomActivation
 from .agents import WarehouseAgent, StoreAgent, VehicleAgent
 from .scheduler import DeliveryScheduler
 
-# В model.py изменим класс DeliveryModel
-
-
-# В model.py добавим метод сохранения лога и обновим step
 
 
 class DeliveryModel(Model):
